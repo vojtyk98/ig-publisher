@@ -2,10 +2,8 @@ name: Publish IG Posts
 
 on:
   schedule:
-    - cron: '55 11 * * *'
-    - cron: '55 14 * * *'
-    - cron: '55 17 * * *'
-  workflow_dispatch:
+    - cron: '45 18 * * *'   # 18:45 každý den
+  workflow_dispatch:  # stále možnost ručního spuštění
 
 jobs:
   wakeup-server:
@@ -15,4 +13,3 @@ jobs:
       - name: Call Render Web Service
         run: |
           curl -X GET https://ig-publisher.onrender.com
-
