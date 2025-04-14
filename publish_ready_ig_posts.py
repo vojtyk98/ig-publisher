@@ -14,7 +14,7 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_REPOSITORY = "scheduler-folder"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = "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"
 
 # ========== 📋 Funkce ==========
 
