@@ -1,1 +1,18 @@
+name: Publish IG Posts
+
+on:
+  schedule:
+    - cron: '55 11 * * *'
+    - cron: '55 14 * * *'
+    - cron: '55 17 * * *'
+  workflow_dispatch:
+
+jobs:
+  wakeup-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Render Web Service
+        run: |
+          curl -X GET https://ig-publisher.onrender.com
 
