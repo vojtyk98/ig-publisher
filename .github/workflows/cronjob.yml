@@ -2,8 +2,8 @@ name: Publish IG Posts
 
 on:
   schedule:
-    - cron: '45 18 * * *'   # 18:45 každý den
-  workflow_dispatch:  # stále možnost ručního spuštění
+    - cron: '10 23 * * *'  # každý den ve 23:10
+  workflow_dispatch:
 
 jobs:
   wakeup-server:
