@@ -1,15 +1,28 @@
-name: Publish IG Posts
+name: IG Publisher Cron
 
 on:
   schedule:
-    - cron: '30 10 * * *'  # každý den ve 23:10
-  workflow_dispatch:
+    - cron: '20 20 * * *'  # UTC 10:30 = 12:30 českého času
+  workflow_dispatch:      # Možnost spustit ručně
 
 jobs:
-  wakeup-server:
+  publish:
     runs-on: ubuntu-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
     steps:
-      - name: Call Render Web Service
-        run: |
-          curl -X GET https://ig-publisher.onrender.com
+      - name: ⬇️ Checkout repozitáře
+        uses: actions/checkout@v3
+
+      - name: 🐍 Nainstaluj Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Instalace requests
+        run: pip install requests
+
+      - name: 🚀 Spusť IG publikaci
+        run: python publish_ready_ig_posts.py
