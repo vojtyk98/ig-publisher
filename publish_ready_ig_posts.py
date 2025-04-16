@@ -1,7 +1,8 @@
 import os
+import json
 import time
 import requests
-import json
+from urllib.parse import quote
 
 # ========== 🔒 Nastavení ==========
 
@@ -14,46 +15,49 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_REPOSITORY = "scheduler-folder"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = os.environ["GH_TOKEN"]
 
-# ========== 📋 Funkce ==========
-
+# ========== Načtení plánovaných příspěvků ==========
 def load_schedule():
     if not os.path.exists(SCHEDULE_FILE):
         return []
-    with open(SCHEDULE_FILE, "r") as f:
+    with open(SCHEDULE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def save_schedule(schedule):
-    with open(SCHEDULE_FILE, "w") as f:
+    with open(SCHEDULE_FILE, "w", encoding="utf-8") as f:
         json.dump(schedule, f, indent=2)
 
+# ========== GitHub mazání ==========
 def delete_file_from_github(filename):
-    """Smaže soubor z GitHubu."""
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
 
-    # Získáme SHA souboru
     get_resp = requests.get(url, headers=headers)
     if get_resp.status_code == 200:
-        sha = get_resp.json()["sha"]
+        sha = get_resp.json().get("sha")
+        if not sha:
+            print(f"❌ SHA nenalezen pro soubor: {filename}")
+            return
+
         data = {
             "message": f"delete {filename}",
             "sha": sha,
             "branch": GITHUB_BRANCH
         }
+
         delete_resp = requests.delete(url, headers=headers, json=data)
         if delete_resp.status_code == 200:
-            print(f"✅ Smazán soubor z GitHub: {filename}")
+            print(f"🗑️ GitHub: Soubor {filename} smazán.")
         else:
-            print(f"❌ Chyba při mazání souboru: {delete_resp.json()}")
+            print(f"❌ Chyba při mazání {filename}: {delete_resp.status_code} → {delete_resp.json()}")
     else:
-        print(f"❌ Soubor nenalezen pro smazání: {filename}")
+        print(f"⚠️ Soubor {filename} nebyl nalezen → {get_resp.status_code}")
 
+# ========== IG Publikace ==========
 def publish_ready_ig_posts():
     schedule = load_schedule()
     now = int(time.time())
@@ -69,24 +73,22 @@ def publish_ready_ig_posts():
                     "access_token": ACCESS_TOKEN
                 }
             ).json()
+
             if "id" in res:
                 print(f"✅ IG publikováno: {post['filename']}")
-                # ➡️ Po publikaci smažeme obrázek z GitHubu
-                delete_file_from_github(post['filename'])
+                delete_file_from_github(post["filename"])
             else:
-                print(f"❌ IG publikace chyba: {res}")
+                print(f"❌ IG chyba: {res}")
         else:
             remaining.append(post)
 
     if remaining:
         save_schedule(remaining)
     else:
-        # Pokud není co publikovat, smažeme ig_schedule.json
-        print("✅ Všechny příspěvky publikovány. Mažu ig_schedule.json.")
         if os.path.exists(SCHEDULE_FILE):
             os.remove(SCHEDULE_FILE)
+        print("✅ Vše hotovo. ig_schedule.json smazán.")
 
-# ========== 🏁 Hlavní spuštění ==========
-
+# ========== Spuštění ==========
 if __name__ == "__main__":
     publish_ready_ig_posts()
