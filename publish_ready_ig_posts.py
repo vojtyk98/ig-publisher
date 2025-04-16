@@ -22,15 +22,15 @@ SCHEDULE_FILE = os.path.join("NotPlaned", "ig_schedule.json")
 
 # ========== 📂 Načti naplánované příspěvky ==========
 def load_schedule():
-    if not os.path.exists(SCHEDULE_FILE):
-        print("⚠️ Soubor s plánem neexistuje.")
+    json_url = "https://vojtyk98.github.io/scheduler-folder/NotPlaned/ig_schedule.json"
+    try:
+        response = requests.get(json_url)
+        response.raise_for_status()
+        print("✅ JSON úspěšně načten z GitHub Pages.")
+        return response.json()
+    except Exception as e:
+        print("❌ Chyba při načítání JSON z GitHub Pages:", e)
         return []
-    with open(SCHEDULE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def save_schedule(schedule):
-    with open(SCHEDULE_FILE, "w", encoding="utf-8") as f:
-        json.dump(schedule, f, indent=2)
 
 # ========== 🗑️ GitHub mazání ==========
 def delete_file_from_github(filename):
