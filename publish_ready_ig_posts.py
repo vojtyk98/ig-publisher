@@ -76,48 +76,48 @@ def publish_ready_ig_posts():
     remaining = []
     published_keys = set()
 
-    for post in schedule:
-        key = (post["filename"], post["publish_time"])
-        if key in published_keys:
-            continue  # přeskočíme duplicitu
-        published_keys.add(key)
+already_handled = set()
 
-        if post["publish_time"] <= now:
-            filename = post["filename"]
-            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-            print(f"\n📤 Publikuji IG: {filename}")
-            print(f"🌐 Obrázek: {image_url}")
+for post in schedule:
+    key = (post["filename"], post["publish_time"])
+    if key in already_handled:
+        continue
+    already_handled.add(key)
 
-            container_res = requests.post(
-                f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
+    if post["publish_time"] <= now:
+        filename = post["filename"]
+        image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
+        print(f"\n📤 Publikuji IG: {filename}")
+        print(f"🌐 Obrázek: {image_url}")
+
+        container_res = requests.post(
+            f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
+            data={
+                "image_url": image_url,
+                "caption": "#MrJoke",
+                "access_token": ACCESS_TOKEN
+            }
+        ).json()
+
+        if "id" in container_res:
+            container_id = container_res["id"]
+            publish_res = requests.post(
+                f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
                 data={
-                    "image_url": image_url,
-                    "caption": "#MrJoke",
+                    "creation_id": container_id,
                     "access_token": ACCESS_TOKEN
                 }
             ).json()
 
-            if "id" in container_res:
-                container_id = container_res["id"]
-                publish_res = requests.post(
-                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": ACCESS_TOKEN
-                    }
-                ).json()
-
-                if "id" in publish_res:
-                    print(f"✅ IG publikováno: {filename}")
-                    delete_file_from_github(filename)
-                else:
-                    print(f"❌ IG chyba při publikaci: {publish_res}")
-                    remaining.append(post)
+            if "id" in publish_res:
+                print(f"✅ IG publikováno: {filename}")
+                delete_file_from_github(filename)
             else:
-                print(f"❌ IG chyba při vytvoření containeru: {container_res}")
-                remaining.append(post)
+                print(f"❌ IG chyba při publikaci: {publish_res}")
         else:
-            remaining.append(post)
+            print(f"❌ IG chyba při vytvoření containeru: {container_res}")
+    else:
+        remaining.append(post)
 
     # Uložení zpět do JSON přes GitHub API
     if remaining:
