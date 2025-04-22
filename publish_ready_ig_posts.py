@@ -63,21 +63,31 @@ def delete_file_from_github(filename):
 
 # ========== 📤 IG Publikace ==========
 def publish_ready_ig_posts():
-    schedule = load_schedule()
-    if not schedule:
+    try:
+        response = requests.get("https://vojtyk98.github.io/scheduler-folder/NotPlaned/ig_schedule.json")
+        response.raise_for_status()
+        schedule = response.json()
+        print("✅ JSON úspěšně načten.")
+    except Exception as e:
+        print("❌ Chyba při načítání JSON:", e)
         return
 
     now = int(time.time())
     remaining = []
+    published_keys = set()
 
     for post in schedule:
+        key = (post["filename"], post["publish_time"])
+        if key in published_keys:
+            continue  # přeskočíme duplicitu
+        published_keys.add(key)
+
         if post["publish_time"] <= now:
             filename = post["filename"]
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
             print(f"\n📤 Publikuji IG: {filename}")
             print(f"🌐 Obrázek: {image_url}")
 
-            # 1️⃣ Vytvoř container
             container_res = requests.post(
                 f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
                 data={
@@ -89,8 +99,6 @@ def publish_ready_ig_posts():
 
             if "id" in container_res:
                 container_id = container_res["id"]
-
-                # 2️⃣ Publikuj container
                 publish_res = requests.post(
                     f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
                     data={
@@ -111,11 +119,30 @@ def publish_ready_ig_posts():
         else:
             remaining.append(post)
 
+    # Uložení zpět do JSON přes GitHub API
     if remaining:
-        save_schedule(remaining)
+        try:
+            new_json = json.dumps(remaining, indent=2)
+            url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/ig_schedule.json"
+            headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+            sha = requests.get(url, headers=headers).json().get("sha")
+
+            upload = requests.put(url, headers=headers, json={
+                "message": "update schedule",
+                "content": base64.b64encode(new_json.encode("utf-8")).decode("utf-8"),
+                "branch": GITHUB_BRANCH,
+                "sha": sha
+            })
+
+            if upload.status_code in (200, 201):
+                print("✅ Aktualizovaný JSON nahrán na GitHub.")
+            else:
+                print(f"❌ Chyba při aktualizaci JSON: {upload.json()}")
+
+        except Exception as e:
+            print("❌ Chyba při ukládání zbývajících položek:", e)
     else:
-        os.remove(SCHEDULE_FILE)
-        print("✅ Vše publikováno. JSON smazán.")
+        print("✅ Vše bylo publikováno. JSON bude prázdný.")
 
 # ========== 🏁 Spuštění ==========
 if __name__ == "__main__":
