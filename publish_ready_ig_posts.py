@@ -20,7 +20,7 @@ GITHUB_TOKEN = os.environ["GH_TOKEN"]
 
 SCHEDULE_FILE = os.path.join("NotPlaned", "ig_schedule.json")
 
-SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
+SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILE}"
 
 # ========== 🧹 GitHub mazání ==========
 def delete_file_from_github(filename):
