@@ -23,8 +23,8 @@ SCHEDULE_FILE = os.path.join("NotPlaned", "ig_schedule.json")
 SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{SCHEDULE_FILE}"
 
 # ========== 🧹 GitHub mazání ==========
-def delete_file_from_github(file):
-    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(file)}"
+def delete_file_from_github(filename):
+    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
     headers = {
         "Authorization": f"token {os.environ['GH_TOKEN']}",
         "Accept": "application/vnd.github.v3+json"
@@ -33,27 +33,27 @@ def delete_file_from_github(file):
     if resp.status_code == 200:
         sha = resp.json()["sha"]
         data = {
-            "message": f"delete {file}",
+            "message": f"delete {filename}",
             "sha": sha,
             "branch": GITHUB_BRANCH
         }
         del_resp = requests.delete(url, headers=headers, json=data)
         if del_resp.status_code == 200:
-            print(f"🗑️ GitHub: Soubor {file} smazán.")
+            print(f"🗑️ GitHub: Soubor {filename} smazán.")
         else:
-            print(f"❌ Chyba při mazání {file}: {del_resp.status_code}")
+            print(f"❌ Chyba při mazání {filename}: {del_resp.status_code}")
     else:
-        print(f"⚠️ Soubor {file} nenalezen.")
+        print(f"⚠️ Soubor {filename} nenalezen.")
 
 def upload_schedule_to_github(remaining_schedule):
-    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_file}"
+    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
     headers = {
         "Authorization": f"token {os.environ['GH_TOKEN']}",
         "Accept": "application/vnd.github.v3+json"
     }
 
     if not remaining_schedule:
-        delete_file_from_github(SCHEDULE_file)
+        delete_file_from_github(SCHEDULE_FILENAME)
         return
 
     content = base64.b64encode(json.dumps(remaining_schedule, indent=2).encode("utf-8")).decode("utf-8")
@@ -90,16 +90,16 @@ def publish_ready_ig_posts():
     seen = set()
 
     for post in schedule:
-        key = (post["file"], post["publish_time"])
+        key = (post["filename"], post["publish_time"])
         if key in seen:
             continue
         seen.add(key)
 
         if post["publish_time"] <= now:
-            file = post["file"]
-            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(file)}"
+            filename = post["filename"]
+            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
 
-            print(f"\n📤 Publikuji IG: {file}")
+            print(f"\n📤 Publikuji IG: {filename}")
             print(f"🌐 Obrázek: {image_url}")
 
             container_res = requests.post(
@@ -122,8 +122,8 @@ def publish_ready_ig_posts():
     ).json()
 
     if "id" in publish_res:
-        print(f"✅ IG publikováno: {file}")
-        delete_file_from_github(file)
+        print(f"✅ IG publikováno: {filename}")
+        delete_file_from_github(filename)
         # NIC NEPŘIDÁVAT do remaining
     else:
         print(f"❌ IG chyba při publikaci: {publish_res}")
