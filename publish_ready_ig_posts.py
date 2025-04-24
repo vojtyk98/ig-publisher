@@ -1,7 +1,6 @@
 import os
 import time
 import json
-import base64
 import requests
 from urllib.parse import quote
 
@@ -29,26 +28,29 @@ def delete_file_from_github(filename):
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
+
     get_resp = requests.get(url, headers=headers)
     if get_resp.status_code == 200:
         sha = get_resp.json().get("sha")
         if not sha:
             print(f"❌ SHA nenalezeno pro soubor: {filename}")
             return
+
         data = {
             "message": f"Smazání souboru {filename}",
             "sha": sha,
             "branch": GITHUB_BRANCH
         }
+
         delete_resp = requests.delete(url, headers=headers, json=data)
         if delete_resp.status_code == 200:
-            print(f"🗑️ GitHub: Soubor {filename} smazán.")
+            print(f"🗑️ Soubor {filename} smazán z GitHubu.")
         else:
-            print(f"❌ Chyba při mazání {filename}: {delete_resp.status_code}")
+            print(f"❌ Chyba při mazání {filename}: {delete_resp.status_code} → {delete_resp.json()}")
     else:
         print(f"⚠️ Soubor {filename} nebyl nalezen → {get_resp.status_code}")
 
-# ======= 📤 IG Publikace =========
+# ======== 📤 Publikace IG příspěvků ========
 def publish_ready_ig_posts():
     try:
         response = requests.get(SCHEDULE_URL)
@@ -61,6 +63,7 @@ def publish_ready_ig_posts():
 
     now = int(time.time())
     remaining = []
+
     already_handled = set()
 
     for post in schedule:
@@ -72,9 +75,10 @@ def publish_ready_ig_posts():
         if post["publish_time"] <= now:
             filename = post["filename"]
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-            print(f"\n📤 Publikuji IG: {filename}")
+            print(f"📤 Publikuji IG: {filename}")
             print(f"🌐 Obrázek: {image_url}")
 
+            # 1️⃣ Vytvoření IG containeru
             container_res = requests.post(
                 f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
                 data={
@@ -86,6 +90,8 @@ def publish_ready_ig_posts():
 
             if "id" in container_res:
                 container_id = container_res["id"]
+
+                # 2️⃣ Publikace containeru
                 publish_res = requests.post(
                     f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
                     data={
@@ -107,13 +113,11 @@ def publish_ready_ig_posts():
             remaining.append(post)
 
     if remaining:
-        # aktualizace JSON nebude potřeba, protože render načítá online
-        print("📂 Některé příspěvky ještě čekají.")
+        print("🔁 Některé příspěvky zůstaly v plánu.")
     else:
-        # pokud žádný příspěvek nezbyl → smažeme JSON z GitHubu
         delete_file_from_github(SCHEDULE_FILENAME)
-        print("✅ Vše publikováno. JSON smazán z GitHubu.")
+        print("✅ Vše bylo publikováno. JSON smazán z GitHubu.")
 
-# ======= 🏁 Spuštění =========
+# ======== 🏁 Spuštění ========
 if __name__ == "__main__":
     publish_ready_ig_posts()
