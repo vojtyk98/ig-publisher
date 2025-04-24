@@ -112,26 +112,26 @@ def publish_ready_ig_posts():
             ).json()
 
             if "id" in container_res:
-                container_id = container_res["id"]
-                publish_res = requests.post(
-                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": ACCESS_TOKEN
-                    }
-                ).json()
+    container_id = container_res["id"]
+    publish_res = requests.post(
+        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
+        data={
+            "creation_id": container_id,
+            "access_token": ACCESS_TOKEN
+        }
+    ).json()
 
-                if "id" in publish_res:
-                    print(f"✅ IG publikováno: {filename}")
-                    delete_file_from_github(filename)
-                else:
-                    print(f"❌ IG chyba při publikaci: {publish_res}")
-                    remaining.append(post)
-            else:
-                print(f"❌ IG chyba při vytvoření containeru: {container_res}")
-                remaining.append(post)
-        else:
-            remaining.append(post)
+    if "id" in publish_res:
+        print(f"✅ IG publikováno: {filename}")
+        delete_file_from_github(filename)
+        # NIC NEPŘIDÁVAT do remaining
+    else:
+        print(f"❌ IG chyba při publikaci: {publish_res}")
+        remaining.append(post)
+else:
+    print(f"❌ IG chyba při vytvoření containeru: {container_res}")
+    remaining.append(post)
+
 
     upload_schedule_to_github(remaining)
 
