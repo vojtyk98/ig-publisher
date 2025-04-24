@@ -16,6 +16,7 @@ GITHUB_TOKEN = os.environ["GH_TOKEN"]
 SCHEDULE_FILENAME = "ig_schedule.json"
 SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
 
+# ====== 🗑️ SMAZÁNÍ SOUBORU Z GITHUBU ======
 def delete_file_from_github(filename):
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
     headers = {
@@ -26,10 +27,10 @@ def delete_file_from_github(filename):
     if get_resp.status_code == 200:
         sha = get_resp.json().get("sha")
         if not sha:
-            print(f"❌ SHA nenalezena pro soubor: {filename}")
+            print(f"⚠️ SHA nenalezeno pro soubor: {filename}")
             return
         data = {
-            "message": f"delete {filename}",
+            "message": f"Smazání souboru {filename}",
             "sha": sha,
             "branch": GITHUB_BRANCH
         }
@@ -37,14 +38,14 @@ def delete_file_from_github(filename):
         if delete_resp.status_code == 200:
             print(f"🗑️ GitHub: Soubor {filename} smazán.")
         else:
-            print(f"❌ Chyba při mazání {filename}: {delete_resp.status_code} → {delete_resp.json()}")
+            print(f"❌ Chyba při mazání: {delete_resp.status_code} → {delete_resp.json()}")
     else:
         print(f"⚠️ Soubor {filename} nebyl nalezen → {get_resp.status_code}")
 
-# === IG Publikace ===
+# ====== 📤 PUBLISH IG ======
 def publish_ready_ig_posts():
-    print("🔁 Načítám plán...")
     try:
+        print("📥 Načítám plán...")
         response = requests.get(SCHEDULE_URL)
         response.raise_for_status()
         schedule = response.json()
@@ -55,17 +56,20 @@ def publish_ready_ig_posts():
 
     now = int(time.time())
     remaining = []
-    publikovano = False
+    already_handled = set()
 
     for post in schedule:
-        print(f"➡️ Kontrola příspěvku: {post['filename']} v {post['publish_time']} (teď: {now})")
+        key = (post["filename"], post["publish_time"])
+        if key in already_handled:
+            continue
+        already_handled.add(key)
+
         if post["publish_time"] <= now:
             filename = post["filename"]
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-            print(f"📤 Publikuji IG: {filename}")
+            print(f"\n📤 Publikuji IG: {filename}")
             print(f"🌐 Obrázek: {image_url}")
 
-            # 1️⃣ Vytvoření containeru
             container_res = requests.post(
                 f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
                 data={
@@ -75,33 +79,34 @@ def publish_ready_ig_posts():
                 }
             ).json()
 
-    if "id" in container_res:
-    container_id = container_res["id"]
-    publish_res = requests.post(
-        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-        data={
-            "creation_id": container_id,
-            "access_token": ACCESS_TOKEN
-        }
-    ).json()
+            if "id" in container_res:
+                container_id = container_res["id"]
+                publish_res = requests.post(
+                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
+                    data={
+                        "creation_id": container_id,
+                        "access_token": ACCESS_TOKEN
+                    }
+                ).json()
 
-    if "id" in publish_res:
-        print(f"✅ IG publikováno: {filename}")
-        delete_file_from_github(filename)
-        publikovano = True
-    else:
-        print(f"❌ Chyba publikace IG: {publish_res}")
-        remaining.append(post)
-else:
-    print(f"❌ Chyba vytvoření containeru IG: {container_res}")
-    remaining.append(post)
+                if "id" in publish_res:
+                    print(f"✅ IG publikováno: {filename}")
+                    delete_file_from_github(filename)
+                else:
+                    print(f"❌ Chyba publikace IG: {publish_res}")
+                    remaining.append(post)
+            else:
+                print(f"❌ Chyba vytvoření containeru IG: {container_res}")
+                remaining.append(post)
+        else:
+            remaining.append(post)
 
     if remaining:
-        print(f"⏳ Některé příspěvky čekají. JSON zůstává.")
+        print(f"⚠️ Některé příspěvky čekají. JSON zůstává.")
     else:
         print("✅ Vše publikováno. JSON bude smazán.")
         delete_file_from_github(SCHEDULE_FILENAME)
 
-# Spuštění
+# ========== ▶️ SPUŠTĚNÍ ==========
 if __name__ == "__main__":
     publish_ready_ig_posts()
