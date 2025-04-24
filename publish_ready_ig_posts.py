@@ -75,27 +75,26 @@ def publish_ready_ig_posts():
                 }
             ).json()
 
-            if "id" in container_res:
-                container_id = container_res["id"]
-                publish_res = requests.post(
-                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": ACCESS_TOKEN
-                    }
-                ).json()
-                if "id" in publish_res:
-                    print(f"✅ IG publikováno: {filename}")
-                    delete_file_from_github(filename)
-                    publikovano = True
-                else:
-                    print(f"❌ Chyba publikace IG: {publish_res}")
-                    remaining.append(post)
-            else:
-                print(f"❌ Chyba vytvoření containeru IG: {container_res}")
-                remaining.append(post)
-        else:
-            remaining.append(post)
+    if "id" in container_res:
+    container_id = container_res["id"]
+    publish_res = requests.post(
+        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
+        data={
+            "creation_id": container_id,
+            "access_token": ACCESS_TOKEN
+        }
+    ).json()
+
+    if "id" in publish_res:
+        print(f"✅ IG publikováno: {filename}")
+        delete_file_from_github(filename)
+        publikovano = True
+    else:
+        print(f"❌ Chyba publikace IG: {publish_res}")
+        remaining.append(post)
+else:
+    print(f"❌ Chyba vytvoření containeru IG: {container_res}")
+    remaining.append(post)
 
     if remaining:
         print(f"⏳ Některé příspěvky čekají. JSON zůstává.")
