@@ -29,9 +29,9 @@ def delete_file_from_github(filename):
         "Authorization": f"token {os.environ['GH_TOKEN']}",
         "Accept": "application/vnd.github.v3+json"
     }
-    get_resp = requests.get(url, headers=headers)
-    if get_resp.status_code == 200:
-        sha = get_resp.json()["sha"]
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        sha = resp.json()["sha"]
         data = {
             "message": f"delete {filename}",
             "sha": sha,
@@ -45,13 +45,17 @@ def delete_file_from_github(filename):
     else:
         print(f"⚠️ Soubor {filename} nenalezen.")
 
-# ========== 🔄 GitHub update JSON ==========
 def upload_schedule_to_github(remaining_schedule):
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
     headers = {
         "Authorization": f"token {os.environ['GH_TOKEN']}",
         "Accept": "application/vnd.github.v3+json"
     }
+
+    if not remaining_schedule:
+        delete_file_from_github(SCHEDULE_FILENAME)
+        return
+
     content = base64.b64encode(json.dumps(remaining_schedule, indent=2).encode("utf-8")).decode("utf-8")
     get_resp = requests.get(url, headers=headers)
     sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
@@ -70,7 +74,7 @@ def upload_schedule_to_github(remaining_schedule):
     else:
         print(f"❌ Chyba při aktualizaci JSON: {put_resp.json()}")
 
-# ========== 📤 IG Publikace ==========
+# ========== Publikace ==========
 def publish_ready_ig_posts():
     try:
         response = requests.get(SCHEDULE_URL)
@@ -131,6 +135,14 @@ def publish_ready_ig_posts():
 
     upload_schedule_to_github(remaining)
 
-# ========== 🏁 Spuštění ==========
+    # 🧹 Smazání lokálního JSONu
+    if os.path.exists(LOCAL_JSON_PATH):
+        try:
+            os.remove(LOCAL_JSON_PATH)
+            print("🧹 Lokální JSON smazán.")
+        except Exception as e:
+            print(f"⚠️ Nepodařilo se smazat lokální JSON: {e}")
+
+# ========== Spuštění ==========
 if __name__ == "__main__":
     publish_ready_ig_posts()
