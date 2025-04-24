@@ -62,8 +62,8 @@ def publish_ready_ig_posts():
         return
 
     now = int(time.time())
-    remaining = []
-
+    success_count = 0
+    total_to_publish = 0
     already_handled = set()
 
     for post in schedule:
@@ -73,6 +73,7 @@ def publish_ready_ig_posts():
         already_handled.add(key)
 
         if post["publish_time"] <= now:
+            total_to_publish += 1
             filename = post["filename"]
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
             print(f"📤 Publikuji IG: {filename}")
@@ -103,21 +104,16 @@ def publish_ready_ig_posts():
                 if "id" in publish_res:
                     print(f"✅ IG publikováno: {filename}")
                     delete_file_from_github(filename)
+                    success_count += 1
                 else:
                     print(f"❌ IG chyba při publikaci: {publish_res}")
-                    remaining.append(post)
             else:
                 print(f"❌ IG chyba při vytvoření containeru: {container_res}")
-                remaining.append(post)
-        else:
-            remaining.append(post)
 
-    if remaining:
-        print("🔁 Některé příspěvky zůstaly v plánu.")
-    else:
+    if total_to_publish > 0 and success_count == total_to_publish:
         delete_file_from_github(SCHEDULE_FILENAME)
         print("✅ Vše bylo publikováno. JSON smazán z GitHubu.")
-
-# ======== 🏁 Spuštění ========
-if __name__ == "__main__":
-    publish_ready_ig_posts()
+    elif total_to_publish == 0:
+        print("ℹ️ Zatím žádné příspěvky k publikaci.")
+    else:
+        print("⚠️ Některé příspěvky selhaly – JSON zůstává.")
