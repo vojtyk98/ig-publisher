@@ -16,7 +16,7 @@ GITHUB_TOKEN = os.environ["GH_TOKEN"]
 SCHEDULE_FILENAME = "ig_schedule.json"
 SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
 
-# ====== 🗑️ SMAZÁNÍ SOUBORU Z GITHUBU ======
+# ====== 🗑️ Funkce pro mazání z GitHubu ======
 def delete_file_from_github(filename):
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
     headers = {
@@ -27,7 +27,7 @@ def delete_file_from_github(filename):
     if get_resp.status_code == 200:
         sha = get_resp.json().get("sha")
         if not sha:
-            print(f"⚠️ SHA nenalezeno pro soubor: {filename}")
+            print(f"⚠️ SHA nenalezena pro soubor: {filename}")
             return
         data = {
             "message": f"Smazání souboru {filename}",
@@ -36,38 +36,35 @@ def delete_file_from_github(filename):
         }
         delete_resp = requests.delete(url, headers=headers, json=data)
         if delete_resp.status_code == 200:
-            print(f"🗑️ GitHub: Soubor {filename} smazán.")
+            print(f"🗑️ Soubor {filename} smazán z GitHubu.")
         else:
-            print(f"❌ Chyba při mazání: {delete_resp.status_code} → {delete_resp.json()}")
+            print(f"❌ Chyba při mazání souboru: {delete_resp.status_code} → {delete_resp.json()}")
     else:
         print(f"⚠️ Soubor {filename} nebyl nalezen → {get_resp.status_code}")
 
-# ====== 📤 PUBLISH IG ======
+# ====== 📤 Funkce pro publikaci na IG ======
 def publish_ready_ig_posts():
     try:
         print("📥 Načítám plán...")
         response = requests.get(SCHEDULE_URL)
         response.raise_for_status()
         schedule = response.json()
-        print("✅ JSON úspěšně načten.")
+        print("✅ JSON načten.")
     except Exception as e:
         print(f"❌ Chyba při načítání JSON: {e}")
         return
 
     now = int(time.time())
     remaining = []
-    already_handled = set()
+    publikovano = False
 
     for post in schedule:
-        key = (post["filename"], post["publish_time"])
-        if key in already_handled:
-            continue
-        already_handled.add(key)
+        filename = post["filename"]
+        publish_time = post["publish_time"]
 
-        if post["publish_time"] <= now:
-            filename = post["filename"]
+        if now >= publish_time:
+            print(f"\n📸 Čas publikace nastal pro: {filename}")
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-            print(f"\n📤 Publikuji IG: {filename}")
             print(f"🌐 Obrázek: {image_url}")
 
             container_res = requests.post(
@@ -92,21 +89,25 @@ def publish_ready_ig_posts():
                 if "id" in publish_res:
                     print(f"✅ IG publikováno: {filename}")
                     delete_file_from_github(filename)
+                    publikovano = True
                 else:
-                    print(f"❌ Chyba publikace IG: {publish_res}")
+                    print(f"❌ Chyba při publikaci IG: {publish_res}")
                     remaining.append(post)
             else:
-                print(f"❌ Chyba vytvoření containeru IG: {container_res}")
+                print(f"❌ Chyba při vytvoření containeru IG: {container_res}")
                 remaining.append(post)
         else:
+            time_left = publish_time - now
+            minutes, seconds = divmod(time_left, 60)
+            print(f"⏳ {filename} - zbývá {minutes} min {seconds} sek do publikace.")
             remaining.append(post)
 
-    if remaining:
-        print(f"⚠️ Některé příspěvky čekají. JSON zůstává.")
-    else:
-        print("✅ Vše publikováno. JSON bude smazán.")
+    if not remaining:
+        print("✅ Vše bylo publikováno. JSON bude smazán.")
         delete_file_from_github(SCHEDULE_FILENAME)
+    else:
+        print(f"⚠️ {len(remaining)} příspěvků čeká na správný čas.")
 
-# ========== ▶️ SPUŠTĚNÍ ==========
+# ====== ▶️ Spuštění ======
 if __name__ == "__main__":
     publish_ready_ig_posts()
