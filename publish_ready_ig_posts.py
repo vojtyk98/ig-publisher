@@ -100,13 +100,16 @@ def main():
                 filename = data.get("filename")
 
                 if publish_time and filename:
-                    if now >= publish_time:
+                    # 🔥 Přidáváme kontrolu přesnosti
+                    difference = now - publish_time
+                    if abs(difference) <= 60:  # povolíme ±60 sekund
+                        print(f"🚀 Čas je správný ({difference} sekund rozdíl). Publikuji.")
                         success = publish_to_ig(filename)
                         if success:
                             delete_file_from_github(filename)
-                            delete_file_from_github(name)  # smaže JSON
+                            delete_file_from_github(name)
                     else:
-                        print(f"🕒 {filename} ještě nepublikujeme (čeká).")
+                        print(f"🕒 {filename} zatím NEpublikujeme (rozdíl {difference} sekund).")
                 else:
                     print(f"⚠️ JSON {name} neobsahuje potřebná data.")
 
