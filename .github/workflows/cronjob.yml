@@ -2,7 +2,7 @@ name: IG Publisher Cron
 
 on:
   schedule:
-    - cron: '42 22 * * *'  # UTC 10:30 = 12:30 českého času
+    - cron: '25 12 * * *'  # UTC 10:30 = 12:30 českého času
   workflow_dispatch:      # Možnost spustit ručně
 
 jobs:
