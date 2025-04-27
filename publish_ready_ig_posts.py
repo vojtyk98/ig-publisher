@@ -36,7 +36,7 @@ def delete_file_from_github(filename):
         }
         delete_resp = requests.delete(url, headers=headers, json=data)
         if delete_resp.status_code == 200:
-            print(f"🗑️ Soubor {filename} smazán z GitHubu.")
+            print(f"🗑️ GitHub: Soubor {filename} smazán.")
         else:
             print(f"❌ Chyba při mazání souboru: {delete_resp.status_code} → {delete_resp.json()}")
     else:
@@ -91,10 +91,10 @@ def publish_ready_ig_posts():
                     delete_file_from_github(filename)
                     publikovano = True
                 else:
-                    print(f"❌ Chyba při publikaci IG: {publish_res}")
+                    print(f"❌ Chyba publikace IG: {publish_res}")
                     remaining.append(post)
             else:
-                print(f"❌ Chyba při vytvoření containeru IG: {container_res}")
+                print(f"❌ Chyba vytvoření containeru IG: {container_res}")
                 remaining.append(post)
         else:
             time_left = publish_time - now
@@ -105,6 +105,9 @@ def publish_ready_ig_posts():
     if not remaining:
         print("✅ Vše bylo publikováno. JSON bude smazán.")
         delete_file_from_github(SCHEDULE_FILENAME)
+    elif not publikovano:
+        print("⌛ Žádný příspěvek nebyl připraven. Čekám 5 minut a končím...")
+        time.sleep(300)  # 5 minut čekání
     else:
         print(f"⚠️ {len(remaining)} příspěvků čeká na správný čas.")
 
