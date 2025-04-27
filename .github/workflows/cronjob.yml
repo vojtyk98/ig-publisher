@@ -1,28 +1,23 @@
-name: IG Publisher Cron
+name: Publish IG Posts
 
 on:
   schedule:
-    - cron: '0,5-59/5 * * * *'  # UTC 10:30 = 12:30 českého času
-  workflow_dispatch:      # Možnost spustit ručně
+    - cron: '*/5 * * * *'  # každých 5 minut
+  workflow_dispatch:
 
 jobs:
-  publish:
+  run-publish:
     runs-on: ubuntu-latest
-
-    env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
     steps:
-      - name: ⬇️ Checkout repozitáře
-        uses: actions/checkout@v3
-
-      - name: 🐍 Nainstaluj Python
-        uses: actions/setup-python@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-
-      - name: 📦 Instalace requests
+          python-version: '3.11'
+      - name: Install dependencies
         run: pip install requests
-
-      - name: 🚀 Spusť IG publikaci
-        run: python publish_ready_ig_posts.py
+      - name: Run publish script
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python3 src/publish_ready_ig_posts.py
