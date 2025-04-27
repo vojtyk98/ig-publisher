@@ -16,126 +16,100 @@ GITHUB_TOKEN = os.environ["GH_TOKEN"]
 SCHEDULE_FILENAME = "ig_schedule.json"
 SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
 
-# ========== 📥 Načtení plánu ==========
-def load_schedule():
-    try:
-        response = requests.get(SCHEDULE_URL)
-        response.raise_for_status()
-        print("✅ JSON načten.")
+# ========== 📂 Funkce GitHub ==========
+def list_files_from_github():
+    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
         return response.json()
-    except Exception as e:
-        print(f"❌ Chyba načítání JSON: {e}")
+    else:
+        print(f"❌ Chyba načítání souborů: {response.status_code}")
         return []
 
-# ========== 🗑️ Smazání souboru z GitHubu ==========
+def download_file_from_github(filename):
+    url = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{filename}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.content
+    else:
+        return None
+
 def delete_file_from_github(filename):
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     get_resp = requests.get(url, headers=headers)
     if get_resp.status_code == 200:
         sha = get_resp.json().get("sha")
         if sha:
-            data = {
-                "message": f"delete {filename}",
-                "sha": sha,
-                "branch": GITHUB_BRANCH
-            }
+            data = {"message": f"delete {filename}", "sha": sha, "branch": GITHUB_BRANCH}
             delete_resp = requests.delete(url, headers=headers, json=data)
             if delete_resp.status_code in (200, 204):
-                print(f"🗑️ GitHub: Soubor {filename} smazán.")
-    else:
-        print(f"⚠️ Soubor {filename} nebyl nalezen (nebo už smazán).")
+                print(f"🗑️ GitHub: {filename} smazán.")
+            else:
+                print(f"❌ Chyba mazání {filename}: {delete_resp.json()}")
 
-# ========== 📤 IG Publikace ==========
-def publish_ready_ig_posts():
-    schedule = load_schedule()
-    if not schedule:
-        print("📭 Žádné příspěvky k naplánování.")
+# ========== 📤 Funkce IG publikace ==========
+def publish_to_ig(image_filename):
+    image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(image_filename)}"
+    print(f"🌍 Publikuji obrázek: {image_url}")
+
+    container_res = requests.post(
+        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
+        data={
+            "image_url": image_url,
+            "caption": "#MrJoke",
+            "access_token": ACCESS_TOKEN
+        }
+    ).json()
+
+    if "id" in container_res:
+        container_id = container_res["id"]
+        publish_res = requests.post(
+            f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
+            data={
+                "creation_id": container_id,
+                "access_token": ACCESS_TOKEN
+            }
+        ).json()
+        if "id" in publish_res:
+            print(f"✅ Publikováno {image_filename}")
+            return True
+        else:
+            print(f"❌ Chyba publikace: {publish_res}")
+    else:
+        print(f"❌ Chyba vytvoření containeru: {container_res}")
+    return False
+
+# ========== 🚀 Hlavní logika ==========
+def main():
+    files = list_files_from_github()
+    if not files:
+        print("📭 Žádné soubory k publikaci.")
         return
 
     now = int(time.time())
-    new_schedule = []
 
-    for post in schedule:
-        if post["publish_time"] <= now:
-            filename = post["filename"]
-            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
-            print(f"📤 Publikuji IG: {filename}")
-            print(f"🌍 Obrázek: {image_url}")
+    for file in files:
+        name = file["name"]
+        if name.endswith(".json"):
+            content = download_file_from_github(name)
+            if content:
+                data = json.loads(content.decode("utf-8"))
+                publish_time = data.get("publish_time")
+                filename = data.get("filename")
 
-            # 1️⃣ Vytvoření containeru
-            container_res = requests.post(
-                f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
-                data={
-                    "image_url": image_url,
-                    "caption": "#MrJoke",
-                    "access_token": ACCESS_TOKEN
-                }
-            ).json()
-
-            if "id" in container_res:
-                container_id = container_res["id"]
-
-                # 2️⃣ Publikace příspěvku
-                publish_res = requests.post(
-                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": ACCESS_TOKEN
-                    }
-                ).json()
-
-                if "id" in publish_res:
-                    print(f"✅ IG publikováno: {filename}")
-                    delete_file_from_github(filename)
+                if publish_time and filename:
+                    if now >= publish_time:
+                        success = publish_to_ig(filename)
+                        if success:
+                            delete_file_from_github(filename)
+                            delete_file_from_github(name)  # smaže JSON
+                    else:
+                        print(f"🕒 {filename} ještě nepublikujeme (čeká).")
                 else:
-                    print(f"❌ Chyba publikace: {publish_res}")
-                    new_schedule.append(post)
-            else:
-                print(f"❌ Chyba vytvoření containeru: {container_res}")
-                new_schedule.append(post)
-        else:
-            new_schedule.append(post)
+                    print(f"⚠️ JSON {name} neobsahuje potřebná data.")
 
-    # ========== 📄 Aktualizace JSON ==========
-    if new_schedule:
-        update_schedule_on_github(new_schedule)
-        print("📂 JSON aktualizován na GitHubu.")
-    else:
-        delete_file_from_github(SCHEDULE_FILENAME)
-        print("✅ Vše naplánováno. JSON smazán.")
-
-# ========== ✍️ Uložení nového JSON ==========
-def update_schedule_on_github(new_schedule):
-    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-
-    get_resp = requests.get(url, headers=headers)
-    sha = None
-    if get_resp.status_code == 200:
-        sha = get_resp.json().get("sha")
-
-    content = base64.b64encode(json.dumps(new_schedule, indent=2).encode("utf-8")).decode("utf-8")
-    data = {
-        "message": "Aktualizace plánovaného JSON",
-        "content": content,
-        "branch": GITHUB_BRANCH
-    }
-    if sha:
-        data["sha"] = sha
-
-    put_resp = requests.put(url, headers=headers, json=data)
-    if put_resp.status_code in (200, 201):
-        print("✅ JSON úspěšně aktualizován.")
-    else:
-        print(f"❌ Chyba při aktualizaci JSON: {put_resp.json()}")
-
-# ========== 🏁 Start ==========
+# ========== 🏁 Spuštění ==========
 if __name__ == "__main__":
-    publish_ready_ig_posts()
+    main()
