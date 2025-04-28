@@ -3,123 +3,119 @@ import time
 import json
 import requests
 from urllib.parse import quote
+from datetime import datetime, timezone, timedelta
 
 # ========== 🔒 Nastavení ==========
 
 ACCESS_TOKEN = "EAAQsUjjteAABO3zZAeyybzfNjbcFCxDH5OJDuzYe2mZAKvWARH5ZBrrgbku972CtNcIVlM9hbyUb3agishZAkfvEZB9zZBSQQnEHIwVZCMLB2TXewgMMMtfdv53tbfmEsxkYaUwDzZCJrTalN6UZC2mY9zPQbAsfycpiSwDEOPeBLR5ePjkZAIgeaGNQl5I5OlyUCYxKPHBSsnRyQ6XFIE"
 INSTAGRAM_ID = "17841472710123488"
-GITHUB_USERNAME = "vojtyk98"
 GITHUB_REPOSITORY = "scheduler-folder"
+GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
-GITHUB_TOKEN = os.environ["GH_TOKEN"]
-SCHEDULE_FOLDER = "NotPlaned"  # složka na GitHubu
-SCHEDULE_FOLDER_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{SCHEDULE_FOLDER}/"
+SCHEDULE_FOLDER_URL = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
 
-# ========== GitHub mazání ==========
-def delete_file_from_github(filename):
-    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{SCHEDULE_FOLDER}/{quote(filename)}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+# ===== Pomocné funkce =====
+def get_schedule_files():
+    """Stáhne seznam všech JSON souborů v plánovací složce."""
+    response = requests.get(SCHEDULE_FOLDER_URL)
+    response.raise_for_status()
+    files = response.json()
+    return [f for f in files if f["name"].endswith(".json")]
 
-    resp = requests.get(url, headers=headers)
-    if resp.status_code == 200:
-        sha = resp.json()["sha"]
-        data = {
-            "message": f"delete {filename}",
+def download_json(file_url):
+    """Stáhne a načte JSON plán."""
+    response = requests.get(file_url)
+    response.raise_for_status()
+    return response.json()
+
+def delete_file(filename):
+    """Smaže soubor z GitHubu."""
+    url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
+    headers = {"Authorization": f"token {os.getenv('GH_TOKEN')}"}
+    get_resp = requests.get(url, headers=headers)
+    if get_resp.status_code == 200:
+        sha = get_resp.json()["sha"]
+        delete_resp = requests.delete(url, headers=headers, json={
+            "message": f"Delete {filename}",
             "sha": sha,
             "branch": GITHUB_BRANCH
+        })
+        if delete_resp.status_code in (200, 201):
+            print(f"🗑️ Soubor {filename} smazán.")
+        else:
+            print(f"❌ Chyba mazání {filename}: {delete_resp.text}")
+
+def publish_to_instagram(image_url, caption="#MrJoke"):
+    """Publikuje obrázek na Instagram."""
+    container = requests.post(
+        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
+        data={
+            "image_url": image_url,
+            "caption": caption,
+            "access_token": ACCESS_TOKEN
         }
-        delete_resp = requests.delete(url, headers=headers, json=data)
-        if delete_resp.status_code == 200:
-            print(f"🗑️ Soubor {filename} smazán z GitHubu.")
-        else:
-            print(f"❌ Chyba při mazání {filename}: {delete_resp.json()}")
+    ).json()
+
+    if "id" not in container:
+        print(f"❌ Chyba vytvoření containeru: {container}")
+        return None
+
+    container_id = container["id"]
+    publish = requests.post(
+        f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
+        data={
+            "creation_id": container_id,
+            "access_token": ACCESS_TOKEN
+        }
+    ).json()
+
+    if "id" in publish:
+        print(f"✅ Úspěšně publikováno: {publish['id']}")
+        return True
     else:
-        print(f"⚠️ Soubor {filename} nebyl nalezen.")
+        print(f"❌ Chyba publikace: {publish}")
+        return False
 
-# ========== 📤 Publikace IG ==========
-def publish_ready_ig_posts():
+# ===== Hlavní logika =====
+def main():
+    print("🔄 Načítám seznam plánovaných příspěvků...")
     try:
-        response = requests.get(SCHEDULE_FOLDER_URL)
-        response.raise_for_status()
+        files = get_schedule_files()
     except Exception as e:
-        print(f"❌ Chyba při načítání složky plánů: {e}")
+        print(f"❌ Chyba načítání složky plánů: {e}")
         return
 
-    now = int(time.time())
-
-    # Vypíšeme všechny JSON soubory
-    all_files = [line for line in response.text.split('\n') if '.json' in line]
-    if not all_files:
-        print("ℹ️ Žádné JSON plány nenalezeny.")
-        return
-
-    for line in all_files:
-        # Vytáhneme jméno souboru z linku
-        start = line.find('href="') + len('href="')
-        end = line.find('"', start)
-        filename = line[start:end]
-
-        if not filename.endswith(".json"):
-            continue
-
-        json_url = f"{SCHEDULE_FOLDER_URL}{filename}"
+    for file in files:
         try:
-            post_resp = requests.get(json_url)
-            post_resp.raise_for_status()
-            post_data = post_resp.json()
+            schedule = download_json(file["download_url"])
         except Exception as e:
-            print(f"❌ Chyba načítání JSON souboru {filename}: {e}")
+            print(f"❌ Chyba stahování plánu {file['name']}: {e}")
             continue
 
-        publish_time = post_data.get("publish_time")
-        image_name = post_data.get("filename")
+        filename = schedule.get("filename")
+        publish_time = schedule.get("publish_time")
 
-        if not publish_time or not image_name:
-            print(f"⚠️ JSON {filename} neobsahuje publish_time nebo filename.")
+        if not filename or not publish_time:
+            print(f"⚠️ Chybný formát plánu: {file['name']}")
             continue
 
-        time_diff = publish_time - now
+        now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=2)))  # Český čas UTC+2
+        current_timestamp = int(now.timestamp())
 
-        if -60 <= time_diff <= 60:
-            print(f"🚀 Čas publikace nastal: {image_name}")
+        if current_timestamp >= publish_time:
+            print(f"📤 Čas publikace nastal: {filename}")
+            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
 
-            # Vytvoříme container na IG
-            image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{SCHEDULE_FOLDER}/{quote(image_name)}"
-            container_res = requests.post(
-                f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
-                data={
-                    "image_url": image_url,
-                    "caption": "#MrJoke",
-                    "access_token": ACCESS_TOKEN
-                }
-            ).json()
+            success = publish_to_instagram(image_url)
 
-            if "id" in container_res:
-                container_id = container_res["id"]
-                publish_res = requests.post(
-                    f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": ACCESS_TOKEN
-                    }
-                ).json()
-
-                if "id" in publish_res:
-                    print(f"✅ IG publikováno: {image_name}")
-                    delete_file_from_github(filename)
-                    delete_file_from_github(image_name)
-                else:
-                    print(f"❌ Chyba při publikaci: {publish_res}")
-            else:
-                print(f"❌ Chyba při vytvoření containeru: {container_res}")
-
+            if success:
+                delete_file(filename)
+                delete_file(file["name"])
         else:
-            print(f"⏳ {image_name} zatím NEpublikujeme (rozdíl {time_diff} sekund).")
+            rozdil = publish_time - current_timestamp
+            print(f"⏳ {filename} zatím NEpublikujeme (rozdíl {rozdil} sekund).")
 
-# ========== 🏁 Spuštění ==========
+# ===== Spuštění =====
 if __name__ == "__main__":
-    publish_ready_ig_posts()
+    main()
