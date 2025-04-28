@@ -14,7 +14,7 @@ GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
 GITHUB_TOKEN = os.environ["GH_TOKEN"]
 SCHEDULE_FILENAME = "ig_schedule.json"
-SCHEDULE_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
+SCHEDULE_FOLDER_URL = f"https://vojtyk98.github.io/{GITHUB_REPOSITORY}/{GITHUB_UPLOAD_FOLDER}/{SCHEDULE_FILENAME}"
 
 # Funkce pro smazání souboru z GitHubu
 def delete_file_from_github(filename):
