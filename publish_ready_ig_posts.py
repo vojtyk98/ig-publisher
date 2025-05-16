@@ -14,6 +14,7 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
 SCHEDULE_FOLDER_URL = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
+WINDOW = 300  # 5min okno
 
 # ===== Pomocné funkce =====
 
@@ -30,7 +31,11 @@ def download_json(file_url):
 def delete_file(filename):
     url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
     headers = {"Authorization": f"token {os.getenv('GH_TOKEN')}"}
+
+    print(f"\n🧪 Pokus o mazání přes URL: {url}")
     get_resp = requests.get(url, headers=headers)
+    print("🔎 GitHub GET status:", get_resp.status_code)
+
     if get_resp.status_code == 200:
         sha = get_resp.json()["sha"]
         delete_resp = requests.delete(url, headers=headers, json={
@@ -38,15 +43,19 @@ def delete_file(filename):
             "sha": sha,
             "branch": GITHUB_BRANCH
         })
+        print("🔎 DELETE status:", delete_resp.status_code)
+        print("🔎 DELETE odpověď:", delete_resp.text)
+
         if delete_resp.status_code in (200, 201):
             print(f"✅ Smazán: {filename}")
         else:
             print(f"❌ Chyba při mazání {filename}: {delete_resp.text}")
     else:
         print(f"⚠️ Soubor {filename} neexistuje nebo nelze najít.")
+        print("📩 GitHub odpověď:", get_resp.text)
 
 def publish_to_instagram(image_url, caption="#MrJoke"):
-    print(f"➡️ Posílám na IG API: {image_url}")
+    print(f"\n➡️ Posílám na IG API: {image_url}")
     container_resp = requests.post(
         f"https://graph.facebook.com/v21.0/{INSTAGRAM_ID}/media",
         data={
@@ -115,14 +124,14 @@ def main():
             print(f"⚠️ Neplatný plán v {file['name']}")
             continue
 
-        now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=2)))  # Čas ČR (UTC+2)
+        now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=2)))  # Čas ČR
         current_timestamp = int(now.timestamp())
 
         print(f"\n🔍 Zpracovávám: {filename}")
         print(f"🕒 Aktuální čas: {current_timestamp}, plánovaný čas: {publish_time}")
 
-        if current_timestamp >= publish_time:
-            print(f"📤 Publikujeme {filename}...")
+        if publish_time <= current_timestamp <= publish_time + WINDOW:
+            print(f"📤 Čas publikace právě teď: {filename}")
             image_url = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/{quote(filename)}"
 
             try:
@@ -137,7 +146,8 @@ def main():
             else:
                 print(f"⛔ Publikace selhala. {filename} ponechán pro další pokus.")
         else:
-            print(f"⏳ {filename} zatím nepublikujeme (zbývá {publish_time - current_timestamp} s).")
+            rozdil = publish_time - current_timestamp
+            print(f"⏳ {filename} zatím NEpublikujeme (rozdíl {rozdil} s)")
 
 # ===== Spuštění =====
 if __name__ == "__main__":
