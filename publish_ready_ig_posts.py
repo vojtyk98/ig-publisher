@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 ACCESS_TOKEN = "EAAQsUjjteAABO3zZAeyybzfNjbcFCxDH5OJDuzYe2mZAKvWARH5ZBrrgbku972CtNcIVlM9hbyUb3agishZAkfvEZB9zZBSQQnEHIwVZCMLB2TXewgMMMtfdv53tbfmEsxkYaUwDzZCJrTalN6UZC2mY9zPQbAsfycpiSwDEOPeBLR5ePjkZAIgeaGNQl5I5OlyUCYxKPHBSsnRyQ6XFIE"
 INSTAGRAM_ID = "17841472710123488"
+GH_TOKE = os.getenv("GH_TOKEN")
 GITHUB_REPOSITORY = "scheduler-folder"
 GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
@@ -38,7 +39,7 @@ def download(file_url):
 def delete(filename):
     url = f"{API_BASE}/{quote(filename)}"
     headers = {
-        "Authorization": f"Bearer {TOKEN}",
+        "Authorization": f"Bearer {GH_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
     print(f"[🧪] Mazání souboru: {filename}")
