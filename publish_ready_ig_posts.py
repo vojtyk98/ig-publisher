@@ -69,7 +69,7 @@ def delete(filename):
 def rename_to_error(filename):
     url = f"{API_BASE}/{quote(filename)}"
     headers = {
-        "Authorization": f"Bearer {TOKEN}",
+        "Authorization": f"Bearer {GH_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
 
