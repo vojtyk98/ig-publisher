@@ -13,7 +13,7 @@ GITHUB_REPOSITORY = "scheduler-folder"
 GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
-SCHEDULE_FOLDER_URL = f"https://api.github.com/repos/vojtyk98/scheduler-folder/contents/NotPlaned
+SCHEDULE_FOLDER_URL = f"https://api.github.com/repos/vojtyk98/scheduler-folder/contents/NotPlaned"
 WINDOW = 300  # 5 minut
 
 API_BASE = f"https://api.github.com/repos/{USERNAME}/{REPO}/contents/{FOLDER}"
