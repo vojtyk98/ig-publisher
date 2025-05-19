@@ -17,8 +17,8 @@ SCHEDULE_FOLDER_URL = "https://api.github.com/repos/vojtyk98/scheduler-folder/co
 
 WINDOW = 300  # 5 minut
 
-API_BASE = f"https://api.github.com/repos/{USERNAME}/{REPO}/contents/{FOLDER}"
-CDN_BASE = f"https://cdn.jsdelivr.net/gh/{USERNAME}/{REPO}@{BRANCH}/{FOLDER}/"
+API_BASE = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
+CDN_BASE = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/"
 
 # ========== 🔧 Pomocné funkce ==========
 
