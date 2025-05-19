@@ -39,7 +39,7 @@ def download(file_url):
 def delete(filename):
     url = f"{API_BASE}/{quote(filename)}"
     headers = {
-        "Authorization": f"Bearer {GH_TOKEN}",
+        "Authorization": f"token {GH_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
     print(f"[🧪] Mazání souboru: {filename}")
@@ -54,7 +54,7 @@ def delete(filename):
     data = {
         "message": f"Delete {filename}",
         "sha": sha,
-        "branch": BRANCH
+        "branch": GITHUB_BRANCH
     }
     delete_resp = requests.delete(url, headers=headers, json=data)
     print(f"[🔍] DELETE status: {delete_resp.status_code}")
@@ -65,6 +65,35 @@ def delete(filename):
     else:
         print(f"[❌] Mazání selhalo: {delete_resp.text}")
         return False
+
+def rename_to_error(filename):
+    url = f"{API_BASE}/{quote(filename)}"
+    headers = {
+        "Authorization": f"token {GH_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    get_resp = requests.get(url, headers=headers)
+    if get_resp.status_code != 200:
+        print(f"[⚠️] Nelze načíst {filename} pro přejmenování.")
+        return
+
+    sha = get_resp.json()["sha"]
+    new_name = filename.replace(".json", ".error.json")
+    content = get_resp.json()["content"]
+    data = {
+        "message": f"Přejmenování {filename} → {new_name}",
+        "content": content,
+        "sha": sha,
+        "branch": GITHUB_BRANCH
+    }
+
+    put_resp = requests.put(f"{API_BASE}/{quote(new_name)}", headers=headers, json=data)
+    if put_resp.status_code in (200, 201):
+        print(f"[🚧] JSON přejmenován na {new_name} kvůli chybě mazání.")
+        delete(filename)
+    else:
+        print(f"[❌] Přejmenování selhalo: {put_resp.text}")
 
 def rename_to_error(filename):
     url = f"{API_BASE}/{quote(filename)}"
