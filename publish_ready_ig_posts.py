@@ -16,8 +16,7 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
 SCHEDULE_FOLDER_URL = "https://api.github.com/repos/vojtyk98/scheduler-folder/contents/NotPlaned"
-
-WINDOW = 300  # 5 minut
+TOLERANCE = 600
 
 API_BASE = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
 CDN_BASE = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/"
@@ -122,7 +121,7 @@ def main():
             continue
 
         if not (publish_time - TOLERANCE <= now <= publish_time + TOLERANCE):
-            print(f"⏳ Mimo časové okno ({publish_time - now} s posun)")
+            print(f"⏳ Ještě není čas na publikaci ({publish_time - now} s zbývá)")
             continue
 
         image_url = f"{CDN_BASE}{quote(filename)}"
