@@ -8,7 +8,7 @@ import base64
 
 # ========== 🔒 Nastavení ==========
 
-ACCESS_TOKEN = "EAAQsUjjteAABO3zZAeyybzfNjbcFCxDH5OJDuzYe2mZAKvWARH5ZBrrgbku972CtNcIVlM9hbyUb3agishZAkfvEZB9zZBSQQnEHIwVZCMLB2TXewgMMMtfdv53tbfmEsxkYaUwDzZCJrTalN6UZC2mY9zPQbAsfycpiSwDEOPeBLR5ePjkZAIgeaGNQl5I5OlyUCYxKPHBSsnRyQ6XFIE"
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 INSTAGRAM_ID = "17841472710123488"
 GH_TOKEN = os.getenv("GH_TOKEN")
 GITHUB_REPOSITORY = "scheduler-folder"
