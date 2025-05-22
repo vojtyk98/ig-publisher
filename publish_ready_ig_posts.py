@@ -16,6 +16,7 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
 SCHEDULE_FOLDER_URL = "https://api.github.com/repos/vojtyk98/scheduler-folder/contents/NotPlaned"
+
 TOLERANCE = 1200
 
 API_BASE = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
