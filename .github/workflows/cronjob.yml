@@ -2,26 +2,35 @@ name: Publish IG Posts
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Spustí se každých 5 minut
-  workflow_dispatch:       # Umožní ruční spuštění
+    - cron: '*/5 * * * *'  # Každých 5 minut
+  workflow_dispatch:       # Umožní ruční spuštění z GitHubu
 
 jobs:
-  run-publisher:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: 🧾 Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests
 
-      - name: Run script
-        run: python3 publish_ready_ig_posts.py  # Uprav dle skutečné cesty ke skriptu
+      - name: 🔑 Setup environment variables
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: echo "✔️ Environment variables loaded"
+
+      - name: 🚀 Run publishing script
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: python3 publish_ready_ig_posts.py
