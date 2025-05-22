@@ -16,7 +16,7 @@ GITHUB_USERNAME = "vojtyk98"
 GITHUB_BRANCH = "main"
 GITHUB_UPLOAD_FOLDER = "NotPlaned"
 SCHEDULE_FOLDER_URL = "https://api.github.com/repos/vojtyk98/scheduler-folder/contents/NotPlaned"
-TOLERANCE = 600
+TOLERANCE = "600"
 
 API_BASE = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}/contents/{GITHUB_UPLOAD_FOLDER}"
 CDN_BASE = f"https://cdn.jsdelivr.net/gh/{GITHUB_USERNAME}/{GITHUB_REPOSITORY}@{GITHUB_BRANCH}/{GITHUB_UPLOAD_FOLDER}/"
