@@ -2,7 +2,7 @@ name: Publish IG Posts
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Každých 5 minut
+    - cron: '*/3 * * * *'  # Každých 5 minut
   workflow_dispatch:       # Umožní ruční spuštění z GitHubu
 
 jobs:
